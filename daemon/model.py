@@ -317,13 +317,15 @@ class CascadeDetector:
         """
         model = self.get_model(profile_name)
         
+        # Batch process all sketches for efficient training
+        X = np.array([self.extractor.extract(sketch).to_array() for sketch in sketches])
+        model.partial_fit(X)
+        
+        # Update rolling stats for all sketches
         for sketch in sketches:
-            features = self.extractor.extract(sketch)
-            X = np.array([features.to_array()])
-            model.partial_fit(X)
-            
-            # Update rolling stats
             self.update_rolling_stats(profile_name, sketch)
+        
+        logger.info(f"Model trained on {len(sketches)} baseline samples")
     
     def get_feature_importance(self, profile_name: str, sketch: WindowSketch,
                                top_k: int = 10) -> List[Tuple[str, float]]:

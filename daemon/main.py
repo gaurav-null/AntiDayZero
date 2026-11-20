@@ -169,13 +169,19 @@ def run_train(args):
     n_samples = args.baseline_samples if hasattr(args, 'baseline_samples') else 100
     
     from daemon.common import WindowSketch
+    
+    # Set seed for reproducible training
+    np.random.seed(42)
+    
+    # Create all sketches first
+    sketches = []
     for i in range(n_samples):
         # Create synthetic normal sketch
         total_syscalls = 500 + np.random.randint(-100, 100)
         novel_ngrams = 0 if np.random.random() > 0.1 else np.random.randint(1, 5)
         
         sketch = WindowSketch(
-            timestamp_ns=int(time.time() * 1e9),
+            timestamp_ns=int(time.time() * 1e9) + i,
             cgroup_id=1,
             comm_hash=hash(args.profile) % (2**32),
             total_syscalls=total_syscalls,
@@ -185,11 +191,13 @@ def run_train(args):
             iat_sum_ns=10000000 + np.random.randint(-1000000, 1000000),
             iat_sq_sum_ns=50000000,
             iat_min_ns=1000,
-            iat_max_ns=50000,
+            iat_max_ns=5000,
             is_benign=novel_ngrams == 0,
         )
-        
-        detector.train_baseline(args.profile, [sketch])
+        sketches.append(sketch)
+    
+    logger.info(f"Training model with {len(sketches)} baseline samples")
+    detector.train_baseline(args.profile, sketches)
     
     logger.info(f"Training complete for profile {args.profile}")
     
