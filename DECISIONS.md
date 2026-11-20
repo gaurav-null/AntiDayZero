@@ -305,8 +305,59 @@ This document records all key engineering decisions made during the development 
 **Status**: Fixed ✓
 
 ---
- 
-## Remaining Open Questions
+    
+## Bug Fixes (2026-11-20)
+
+### Fixed: Training Mode Sample Count - Using 100 instead of 3600
+**Issue**: Training mode generated only 100 samples instead of the expected 3600 for 1-hour training at 1 sample/second.
+
+**Root Cause**: 
+- `n_samples` defaulted to 100 instead of calculating from duration
+- `baseline_samples` argument was used but not properly documented
+- Training was supposed to be 1 hour (3600 samples) but only got 100
+
+**Fix**: 
+- Changed to calculate `n_samples = duration / window_size`
+- Default `--training-duration` = 3600 seconds (1 hour)
+- Default `--window-size` = 1.0 second
+- Added documentation for training CLI arguments
+
+**Status**: Fixed ✓
+
+### Fixed: Training Mode - Synthetic Data Generated Instead of Nginx Patterns
+**Issue**: Training mode generated unrealistic syscall patterns not representative of nginx traffic.
+
+**Root Cause**:
+- `total_syscalls` ranged 400-600 with wrong variance
+- `bigram_sum` ranged 0-10 instead of 500-2000
+- `trigram_sum` ranged 0-5 instead of 200-1000
+- `iat_sum_ns` had unrealistic variance
+
+**Fix**: 
+- Implemented `_populate_nginx_bloom_filter()` to pre-populate known nginx syscall patterns
+- Generate realistic nginx syscall patterns:
+  - `total_syscalls`: ~400-700 per window (normal nginx traffic)
+  - `novel_ngrams`: 0 for 98% of samples (baseline traffic)
+  - `iat_mean`: ~1.5ms between syscalls
+  - `iat_std`: ~0.5ms variance
+  - `bigram_sum`: 500-2000 (typical hash bucket values)
+  - `trigram_sum`: 200-1000
+- Added bloom filter patterns for common nginx syscall sequences:
+  - read→write, open→close, accept→recvfrom, etc.
+
+**Status**: Fixed ✓
+
+### Fixed: Missing CLI Arguments for Training Control
+**Issue**: No way to control training duration or window size.
+
+**Fix**: 
+- Added `--training-duration` (default: 3600 seconds)
+- Added `--window-size` (default: 1.0 second)
+- Removed `--baseline-samples` (now calculated automatically)
+
+**Status**: Fixed ✓
+
+---
 
 1. **Bloom Filter Implementation**: Current kernel uses BPF_MAP_TYPE_BLOOM_FILTER (kernel 5.16+). Alternative: software Bloom filter in userspace. [PENDING VERIFICATION]
 

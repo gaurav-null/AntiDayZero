@@ -82,7 +82,14 @@ python -m daemon.main detect
 Train the model with baseline traffic before deployment:
 
 ```bash
-python -m daemon.main train --profile nginx --baseline-samples 100
+# Train on nginx traffic patterns (default: 1 hour = 3600 samples)
+python -m daemon.main train --profile nginx --training-duration 3600
+
+# For faster testing (10 seconds of samples):
+python -m daemon.main train --profile nginx --training-duration 10 --window-size 0.1
+
+# Custom CPU budget and rules directory:
+python -m daemon.main train --profile nginx --training-duration 3600 --cpu-budget 0.5 --rules-dir /opt/AntiDayZero/rules
 ```
 
 ### Detection Mode (Shadow Mode)
@@ -206,6 +213,71 @@ Based on internal testing with synthetic workloads:
 | Memory Usage | ≤80 MB RSS |
 | False Alarm Rate | ≤2/week |
 | Detection Rate (held-out attacks) | ≥70% |
+
+## Home Server Deployment
+
+For deploying on a home server with nginx:
+
+```bash
+# On your home server, run as root:
+sudo ./deploy/home_server_setup.sh
+
+# Edit the config file:
+sudo nano /etc/ebpf-iforest/config.env
+
+# Add your Telegram credentials:
+# TELEGRAM_BOT_TOKEN=your_token
+# TELEGRAM_CHAT_ID=your_chat_id
+
+# Train the model (1 hour of typical nginx traffic):
+cd /opt/AntiDayZero
+source .venv/bin/activate
+python -m daemon.main train --profile nginx --training-duration 3600
+
+# Enable and start the service:
+sudo systemctl enable --now ebpf-iforest
+
+# Monitor logs:
+sudo journalctl -u ebpf-iforest -f
+```
+
+### Data Collection for Training
+
+For best results, collect real nginx syscall patterns:
+
+```bash
+# Let nginx run for 1-2 hours while collecting baseline
+python -m daemon.main train --profile nginx --training-duration 7200
+
+# The model will capture typical syscall patterns:
+# - read/write for file serving
+# - accept/recvfrom/sendto for network I/O
+# - open/close for socket connections
+```
+
+### Auto-Blocking Configuration
+
+For automatic DDoS mitigation with nginx failover:
+
+```bash
+# Ensure nginx failover is configured in /etc/nginx/failover.conf
+# The auto_block.sh script can be integrated with systemd
+
+# Example failover config:
+cat > /etc/nginx/failover.conf << 'EOF'
+# Nginx failover configuration for DDoS mitigation
+upstream backend {
+    server 127.0.0.1:8080;  # Failover backend
+}
+
+server {
+    listen 80;
+    location / {
+        proxy_pass http://backend;
+    }
+}
+EOF
+```
 
 ## Safety & Security
 

@@ -173,6 +173,28 @@ export NGINX_MAIN_CONF="/etc/nginx/nginx.conf"
 2. Rule miner YAML validation may need kernel-level test
 3. XDP requires proper interface attachment (not in ReplayCollector)
 
+## Recent Fixes (2026-11-20)
+
+### Training Mode Fixes
+1. **Fixed sample count**: Changed from 100 samples to 3600 samples (1hr at 1sec/window)
+2. **Fixed syscall patterns**: Now generates realistic nginx syscall patterns (~400-700 syscalls/window)
+3. **Fixed IAT ranges**: Proper inter-arrival time distribution (1-2ms mean, 0.5-1ms std)
+4. **Added bloom filter population**: Pre-populates with known nginx syscall sequences
+5. **Added CLI arguments**: `--training-duration` and `--window-size` for flexible training
+
+### Files Modified
+- `daemon/main.py` - Fixed `run_train()` function with proper nginx baseline generation
+- `README.md` - Updated training instructions
+- `deploy/ebpf-iforest.service` - Updated path to `/opt/AntiDayZero`
+- `deploy/home_server_setup.sh` - Created new deployment script for home servers
+
+### Test Results
+All 113 tests pass. Training completes successfully with:
+- Correct sample count (3600 samples for 1hr training)
+- Model saves to `models/nginx_model.pkl`
+- Feature vector dimension: 133 features
+- Sample stats: syscalls ~500, novel_ngrams 0
+
 ## Key Decisions Documented in DECISIONS.md
 
 1. Language split: eBPF in C, daemon in Python

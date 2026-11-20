@@ -7,24 +7,26 @@ After=network.target
 Type=simple
 User=root
 Group=root
-WorkingDirectory=/opt/ebpf-iforest-ids
-Environment="PATH=/opt/ebpf-iforest-ids/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+WorkingDirectory=/opt/AntiDayZero
+Environment="PATH=/opt/AntiDayZero/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Environment="PYTHONUNBUFFERED=1"
+# Telegram configuration (set these in /etc/ebpf-iforest/config.env)
+EnvironmentFile=/etc/ebpf-iforest/config.env
 
 # Command to run the daemon
-ExecStart=/opt/ebpf-iforest-ids/.venv/bin/python -m daemon.main detect
+ExecStart=/opt/AntiDayZero/.venv/bin/python -m daemon.main detect
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Restart policy
 Restart=on-failure
 RestartSec=5
 
-# Security hardening (optional - relax if needed)
-# CapabilityBoundingSet=CAP_BPF CAP_SYS_ADMIN CAP_PERFMON CAP_SYS_RESOURCE
-# NoNewPrivileges=true
-# ProtectSystem=strict
-# ProtectHome=true
-# ReadWritePaths=/sys/fs/bpf /var/lib/ebpf-iforest /var/log/ebpf-iforest
+# Security hardening for BPF access
+CapabilityBoundingSet=CAP_BPF CAP_SYS_ADMIN CAP_PERFMON CAP_SYS_RESOURCE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/sys/fs/bpf /var/lib/ebpf-iforest /var/log/ebpf-iforest /opt/AntiDayZero/rules
 
 # Resource limits
 LimitNOFILE=65536
